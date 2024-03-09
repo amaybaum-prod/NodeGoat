@@ -1,0 +1,51 @@
+name: Mend Reachability CLI Scan (Linux)
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["12.x"]
+
+    steps:
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v3
+      
+    - name: Set up Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Install dependencies
+      run: npm install --ignore-scripts
+
+    - name: Mend CLI Download
+      env:
+        MEND_EMAIL: ${{secrets.MEND_EMAIL}}
+        MEND_USER_KEY: ${{secrets.MEND_USER_KEY}}
+        MEND_URL: https://saas.whitesourcesoftware.com
+      run: |
+        echo === Downloading Mend CLI ==
+        curl https://downloads.mend.io/cli/linux_amd64/mend -o /usr/local/bin/mend && chmod +x /usr/local/bin/mend
+        echo === Mend CLI version: ===
+        mend version
+
+    - name: Mend CLI Scan
+      env:
+        MEND_EMAIL: ${{secrets.MEND_EMAIL}}
+        MEND_USER_KEY: ${{secrets.MEND_USER_KEY}}
+        MEND_URL: https://saas.whitesourcesoftware.com
+      run: |
+        echo === Running Scan ===
+        mend dep -u --reachability-on
+      continue-on-error: true
+
+    - name: Mend CLI Logs List
+      run: ls -l ~/.mend/logs/sca
+      
+    - name: Mend CLI Logs Content
+      run: cat ~/.mend/logs/sca/*.log
